@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <windows.h>
 #include "helperFunctions.h"
 using namespace std;
 
@@ -64,8 +65,8 @@ private:
     vector<vector<char>> playerBoard;
     vector<vector<char>> playerUI;
     set<vector<int>> resolvedSquares;
-    //const vector<string> borderKey = {" ", "│", "───────", "╮", "", "", "╭", "┬", "", "╯", "", "┤", "╰", "┴", "├", "┼"};
-    const vector<string> borderKey = {" ", "|", "-------", "+", "", "", "+", "+", "", "+", "", "+", "+", "+", "+", "+"};
+    const vector<string> borderKey = {" ", "│", "───────", "╮", "", "", "╭", "┬", "", "╯", "", "┤", "╰", "┴", "├", "┼"};
+    //const vector<string> borderKey = {" ", "|", "-------", "+", "", "", "+", "+", "", "+", "", "+", "+", "+", "+", "+"};
 
     void SetBoard(int row, int column);
     void PlayGuess(int row, int column);

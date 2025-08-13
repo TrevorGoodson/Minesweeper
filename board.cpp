@@ -13,6 +13,7 @@ board::board() :
     numMarkedMines(0),
     isDead(false),
     playerUI(height, vector<char>(length, UNKNOWN_SQUARE)) {
+    SetConsoleOutputCP(CP_UTF8);
 }
 
 void board::PrintUI() {
