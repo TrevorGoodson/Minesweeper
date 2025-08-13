@@ -40,7 +40,7 @@ inline int digitToInt(char a) {
     return a - '0';
 }
 
-inline void ClearScreen() {
+inline void clearScreen() {
     //OS specific function
     system("cls");
 }

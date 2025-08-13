@@ -5,24 +5,18 @@ using namespace std;
 //public:
 
 board::board() :
+    disp(*this),
     height(17),
     length(14),
     mineDensity(0.17),
     numMines(height * length * mineDensity),
     numMarkedMines(0),
     isDead(false),
-    playerUI(height, vector<char>(length, UNKNOWN_SQUARE))
-{}
+    playerUI(height, vector<char>(length, UNKNOWN_SQUARE)) {
+}
 
 void board::PrintUI() {
-    //ClearScreen();
-    PrintColumnLabel();
-    for (int row = 0; row < height; ++row) {
-        PrintRowType1(row);
-        PrintRowType2(row);
-    }
-    PrintRowType1(height);
-    PrintColumnLabel();
+    disp.PrintUI();
 }
 
 void board::GetGuess() {
@@ -60,9 +54,9 @@ bool board::DidWin() const {
 }
 
 void board::ShowXs() {
-for (int row = 0; row < height; ++row) {
-    for  (int column = 0; column < length; ++column) {
-            if (playerBoard.at(row).at(column) ==MINE) {
+    for (int row = 0; row < height; ++row) {
+        for  (int column = 0; column < length; ++column) {
+            if (playerBoard.at(row).at(column) == MINE) {
                 playerUI.at(row).at(column) = MINE;
             }
         }
@@ -141,78 +135,6 @@ void board::PlayFlag(int row, int column) {
             SearchAround(row, column, COUNT_UNKNOWNS);
             break;
     }
-}
-
-vector<string> board::WhatBorder(int row, int column) const {
-    vector<string> whatBorders(3);
-
-    bool downRight = (row != height && column != length && HasBorder(row, column));
-    bool upRight = (row != 0 && column != length && HasBorder(row - 1, column));
-    bool downLeft = (row != height && column != 0 && HasBorder(row, column - 1));
-    bool upLeft = (row != 0 && column != 0 && HasBorder(row - 1, column - 1));
-
-    bool up = upLeft || upRight;
-    bool down = downLeft || downRight;
-    bool left = upLeft || downLeft;
-    bool right = upRight || downRight;
-
-    whatBorders.at(VERTICAL) = down ? borderKey.at(1) : " ";
-    whatBorders.at(HORIZONTAL) = right ? borderKey.at(2) : "       ";
-
-    int borderNum = up * 8 + right * 4 + down * 2 + left;
-    whatBorders.at(CORNER) = borderKey.at(borderNum);
-    return whatBorders;
-}
-
-bool board::HasBorder(int row, int column) const {
-    return playerUI.at(row).at(column) == UNKNOWN_SQUARE ||
-           playerUI.at(row).at(column) == FLAG ||
-           playerUI.at(row).at(column) == MINE;
-}
-
-void board::PrintColumnLabel() {
-    char c = 'A';
-    cout << "  ";
-    for (int i = 0; i < length; ++i) {
-        cout << "    " << c << "   ";
-        ++c;
-    }
-    cout << '\n';
-}
-
-void board::PrintRowType1(int row) {
-    cout << "  ";
-    for (int column = 0; column < length; ++column) {
-        vector<string> border = WhatBorder(row, column);
-        cout << border.at(CORNER);
-        cout << border.at(HORIZONTAL);
-    }
-    cout << WhatBorder(row, length).at(CORNER) << "\n";
-}
-
-void board::PrintRowType2(int row) {
-    cout << intToLowerCase(row) << " ";
-    for (int column = 0; column < length; ++column) {
-        vector<string> border = WhatBorder(row, column);
-        cout << border.at(VERTICAL);
-        cout << "  ";
-        switch (playerUI.at(row).at(column)) {
-            case UNKNOWN_SQUARE:
-                if (!isDead) {
-                    cout << intToLowerCase(row) << " " << intToUpperCase(column);
-                    break;
-                }
-            //fall through
-            case ZERO:
-                cout << "   ";
-            break;
-            default:
-                cout << " " << playerUI.at(row).at(column) << " ";
-            break;
-        }
-        cout << "  ";
-    }
-    cout << WhatBorder(row, length).at(VERTICAL) << " " << intToLowerCase(row) << '\n';
 }
 
 vector<int> board::GetInput() {

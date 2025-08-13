@@ -15,12 +15,6 @@ public:
     bool DidWin() const;
     void ShowXs();
 private:
-    enum character_symbols {
-        ZERO = '0',
-        UNKNOWN_SQUARE = ' ',
-        MINE = 'X',
-        FLAG = '*'
-    };
     enum play_type {
         GUESS = 0,
         PLACE_FLAG = 1
@@ -37,26 +31,46 @@ private:
         VERTICAL = 1,
         HORIZONTAL = 2
     };
+    enum character_symbols {
+        ZERO = '0',
+        UNKNOWN_SQUARE = ' ',
+        MINE = 'X',
+        FLAG = '*'
+    };
+
+    class display {
+    public:
+        display(board& outer);
+        void PrintUI();
+    private:
+        board& outer;
+
+        void PrintColumnLabel();
+        void PrintRowType1(int row);
+        void PrintRowType2(int row);
+        vector<string> WhatBorder(int row, int column) const;
+        bool HasBorder(int row, int column) const;
+    };
+
+    friend class display;
+    display disp;
+
     int height;
     int length;
     double mineDensity;
     int numMines;
     int numMarkedMines;
     bool isDead;
-    //const vector<string> borderKey = {" ", "│", "───────", "╮", "", "", "╭", "┬", "", "╯", "", "┤", "╰", "┴", "├", "┼"};
-    const vector<string> borderKey = {" ", "|", "-------", "+", "", "", "+", "+", "", "+", "", "+", "+", "+", "+", "+"};
     vector<vector<char>> playerBoard;
     vector<vector<char>> playerUI;
     set<vector<int>> resolvedSquares;
+    //const vector<string> borderKey = {" ", "│", "───────", "╮", "", "", "╭", "┬", "", "╯", "", "┤", "╰", "┴", "├", "┼"};
+    const vector<string> borderKey = {" ", "|", "-------", "+", "", "", "+", "+", "", "+", "", "+", "+", "+", "+", "+"};
+
     void SetBoard(int row, int column);
     void PlayGuess(int row, int column);
     void RevealSquare(int row, int column);
     void PlayFlag(int row, int column);
-    vector<string> WhatBorder(int row, int column) const;
-    bool HasBorder(int row, int column) const;
-    void PrintColumnLabel();
-    void PrintRowType1(int row);
-    void PrintRowType2(int row);
     vector<int> GetInput();
     void SearchAround(int row, int column, int whatToDo);
 };
