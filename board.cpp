@@ -2,13 +2,13 @@
 #include "board.h"
 using namespace std;
 
-//public:
+// public:
 
 board::board() :
     disp(*this),
     height(17),
     length(14),
-    mineDensity(0.17),
+    mineDensity(0.9999),
     numMines(height * length * mineDensity),
     numMarkedMines(0),
     isDead(false),
@@ -28,7 +28,7 @@ void board::GetGuess() {
 
     if (playType == GUESS) {
         PlayGuess(row,column);
-    } else { //PLACE_FLAG
+    } else {
         PlayFlag(row,column);
     }
 }
@@ -64,13 +64,16 @@ void board::ShowXs() {
     }
 }
 
-//private:
+// private:
 
 void board::SetBoard(int row, int column) {
     playerBoard = vector<vector<char>>(height, vector<char>(length, ZERO));
 
     int numPlacedMines = 0;
-    while (numPlacedMines < numMines) {
+    const int MAX_ITRS = 1000;
+    int itrCount = 0;
+    while (numPlacedMines < numMines && MAX_ITRS > itrCount) {
+        ++itrCount;
         int randomRow = random_number(height - 1);
         int randomColumn = random_number(length - 1);
 
