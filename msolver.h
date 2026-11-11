@@ -61,35 +61,27 @@ private:
     class neighbor_generator {
         public:
             neighbor_generator(int height, int width);
-            int start(int index);
-            int next();
+            inline int start(int index);
+            inline int next();
             const int DONE;
         private:
-            int height;
-            int width;
-            int row;
-            int col;
-            int i;
+            int height, width, row, col, i;
     };
     class clue_compare_generator {
         public:
             clue_compare_generator(int height, int width);
-            int start(int index);
-            int next();
+            inline int start(int index);
+            inline int next();
             const int DONE;
         private:
             int height, width, row, col, i;
     };
 
-    int height;
-    int width;
-    int size;
-    vector<int> board;
-    vector<int> status_board;
+    int height, width, size;
+    int current_square;
+    vector<int> board, status_board;
     map<int, unsolved_square> unsolved;
     stack<int> fresh;
-    //vector<int> neighbor_buffer;
-    int current_square;
     neighbor_generator n_gen;
     clue_compare_generator cc_gen;
 
@@ -103,10 +95,6 @@ private:
             int(index % width)
         };
     }
-
-    // inline vector<int> copy_neighbor_buffer(int num_neighbors) {
-    //     return vector<int>(neighbor_buffer.begin(), neighbor_buffer.begin() + num_neighbors);
-    // }
 
     inline static bool equal(const clue& a, const clue& b) {
         if (a.min != b.min || a.max != b.max || a.squares.size() != b.squares.size())
@@ -128,9 +116,7 @@ private:
         clues.push_back(new_clue);
         return true;
     }
-
-    //int get_neighbors(int index, int status);
-    //int get_squares_with_overlapping_clues(int index);
+    
     bool compare_clues(unsolved_square& square1, int clue_num1, unsolved_square& square2, int clue_num2);
     bool compare_squares(int index1, int index2);
     void freshen_neighbors(int index);

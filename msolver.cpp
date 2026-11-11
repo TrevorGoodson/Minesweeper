@@ -9,7 +9,6 @@ msolver::msolver(vector<int> board, int height, int width) :
     status_board(vector<int>(size, UNKNOWN)),
     unsolved(map<int, unsolved_square>()),
     fresh(stack<int>()),
-    // neighbor_buffer(vector<int>(8)),
     n_gen(height, width),
     cc_gen(height, width)
 {}
@@ -22,59 +21,7 @@ vector<int> msolver::solve(int start_row, int start_col) {
     return status_board;
 }
 
-// private
-// int msolver::get_neighbors(int index, int status) {
-//     coord c = coords_from_index(index);
-//     int row = c.row + 1;
-//     int col = c.col + 1;
-
-//     int num_neighbors = 0;
-//     for (int i = 0; i < 8; ++i) {
-//         ((i & 2) ? row : col) += (i < 4) ? -1 : 1;
-
-//         if (row < 0 || row >= height || col < 0 || col >= width)
-//             continue;
-        
-//         int neighbor = index_from_coords(row, col);
-//         if (status_board[neighbor] == status) {
-//             neighbor_buffer[num_neighbors] = neighbor;
-//             ++num_neighbors;
-//         }
-//     }
-
-//     return num_neighbors;
-// }
-
-// int msolver::get_squares_with_overlapping_clues(int index) {
-//     coord c = coords_from_index(index);
-
-//     // cout << "checking square at ";
-//     // c.print();
-//     // cout << " for neighbors\n";
-
-//     int num_squares = 0;
-//     for (int i = 0; i < 3; ++i) {
-//         for (int j = 0; j < 3; ++j) {
-//             if (i == 0 && j == 0)
-//                 continue;
-//             int row = c.row + i;
-//             int col = c.col + j;
-
-//             if (row < 0 || row >= height || col < 0 || col >= width)
-//                 continue;
-            
-//             int nearby_square = index_from_coords(row, col);
-//             int status = status_board[nearby_square];
-//             if (status == FRESH || status == UNSOLVED) {
-//                 neighbor_buffer[num_squares] = nearby_square;
-//                 ++num_squares;
-//             }
-//         }
-//     }
-//     // cout << "found neighbors!\n";
-//     return num_squares;
-// }
-
+//private
 bool msolver::compare_clues(unsolved_square& square1, int clue_num1, unsolved_square& square2, int clue_num2) {
     clue solo1 = clue{
         square1.clues[clue_num1].min,
@@ -166,8 +113,6 @@ bool msolver::compare_clues(unsolved_square& square1, int clue_num1, unsolved_sq
     if (!shared_updated) {
         return false;
     }
-
-    // TODO: check for a "perfect split" (not necessary, but makes things more efficient)
 
     // We can put the shared clue in either
     bool square1_updated = insert_if_unique(square1.clues, shared);
@@ -272,7 +217,6 @@ void msolver::uncover(int index) {
         }
     });
     fresh.push(index);
-
     freshen_neighbors(index);
 }
 
@@ -289,7 +233,6 @@ void msolver::mark_mine(int index) {
     cout << endl;
 
     status_board[index] = SOLVED;
-
     freshen_neighbors(index);
 }
 
@@ -346,7 +289,7 @@ void msolver::resolve_clues(unsolved_square& square) {
             i = 0;
         }
 
-        // all squares are mines
+        // 3) all squares are mines
         else if (num_squares == min) {
             for (int sq : *clue_squares) {
                 mark_mine(sq);
@@ -428,7 +371,7 @@ void msolver::resolve_unsolved() {
         }
 
         for (int n = cc_gen.start(current_square); n != cc_gen.DONE; n = cc_gen.next()) {
-            if (status_board[n] != FRESH && status_board[n] != UNSOLVED) {
+            if (status_board[n] != UNSOLVED) {
                 continue;
             }
             bool new_clues = compare_squares(current_square, n);
@@ -437,15 +380,6 @@ void msolver::resolve_unsolved() {
                 break;
             }
         }
-        // int num_squares = get_squares_with_overlapping_clues(current_square);
-        // // cout << "num squares: " << num_squares << endl;
-        // for (int i = 0; i < num_squares; ++i) {
-        //     int new_clues = compare_squares(current_square, neighbor_buffer[i]);
-        //     if (new_clues) {
-        //         num_itrs_no_updates = 0;
-        //         break;
-        //     }
-        // }
 
         iterate_current_square();
     }
@@ -455,13 +389,14 @@ void msolver::resolve_unsolved() {
     }
 }
 
+// neighbor generator
 msolver::neighbor_generator::neighbor_generator(int height, int width) : 
     height(height),
     width(width),
     DONE(height * width)
 {}
 
-int msolver::neighbor_generator::start(int index) {
+inline int msolver::neighbor_generator::start(int index) {
     row = int(index / width) + 1;
     col = int(index % width) + 1;
     i = 0;
@@ -469,7 +404,7 @@ int msolver::neighbor_generator::start(int index) {
     return next();
 }
 
-int msolver::neighbor_generator::next() {
+inline int msolver::neighbor_generator::next() {
     while (i < 8) {
         ((i & 2) ? row : col) += (i < 4) ? -1 : 1;
         ++i;
@@ -483,13 +418,14 @@ int msolver::neighbor_generator::next() {
     return DONE;
 }
 
+// clue compare generator
 msolver::clue_compare_generator::clue_compare_generator(int height, int width) : 
     height(height),
     width(width),
     DONE(height * width)
 {}
 
-int msolver::clue_compare_generator::start(int index) {
+inline int msolver::clue_compare_generator::start(int index) {
     row = int(index / width);
     col = int(index % width);
     i = 0;
@@ -497,7 +433,7 @@ int msolver::clue_compare_generator::start(int index) {
     return next();
 }
 
-int msolver::clue_compare_generator::next() {
+inline int msolver::clue_compare_generator::next() {
     while (i < 8) {
         ++i;
         int r = row + (i / 3);
@@ -506,7 +442,7 @@ int msolver::clue_compare_generator::next() {
         if (r < 0 || r >= height || c < 0 || c >= width)
             continue;
         
-        return r * width + col;
+        return r * width + c;
     }
 
     return DONE;
