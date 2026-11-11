@@ -58,6 +58,19 @@ private:
             return "";
         }
     };
+    class neighbor_generator {
+        public:
+            neighbor_generator(int height, int width);
+            void start(int index);
+            int next();
+            const int DONE;
+        private:
+            int height;
+            int width;
+            int row;
+            int col;
+            int i;
+    };
 
     int height;
     int width;
@@ -68,6 +81,7 @@ private:
     stack<int> fresh;
     vector<int> neighbor_buffer;
     int current_square;
+    neighbor_generator n_gen;
 
     inline int index_from_coords(int row, int col) {
         return row * width + col;

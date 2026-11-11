@@ -6,8 +6,8 @@
 using namespace std;
 
 inline int random_number(int a) {
-    random_device rd;
-    mt19937 gen(rd());
+    static random_device rd;
+    static mt19937 gen(rd());
     uniform_int_distribution<> distr(0, a);
     return distr(gen);
 }

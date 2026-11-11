@@ -1,4 +1,3 @@
-#pragma once
 #include "board.h"
 using namespace std;
 
@@ -69,14 +68,9 @@ void board::ShowXs() {
 void board::SetBoard(int row, int column) {
     playerBoard = vector<vector<char>>(height, vector<char>(length, ZERO));
 
-    playerBoard.at(0).at(3) = MINE;
-    playerBoard.at(1).at(3) = MINE;
-
     int numPlacedMines = 0;
     const int MAX_ITRS = 1000;
-    int itrCount = 0;
-    while (numPlacedMines < numMines && MAX_ITRS > itrCount) {
-        ++itrCount;
+    for (int i = 0; i < MAX_ITRS; ++i) {
         int randomRow = random_number(height - 1);
         int randomColumn = random_number(length - 1);
 
@@ -90,6 +84,10 @@ void board::SetBoard(int row, int column) {
         if (playerBoard.at(randomRow).at(randomColumn) == ZERO) {
             playerBoard.at(randomRow).at(randomColumn) = MINE;
             ++numPlacedMines;
+        }
+
+        if (numPlacedMines >= numMines){
+            break;
         }
     }
 
@@ -111,9 +109,10 @@ void board::PlayGuess(int row, int column) {
         solver_board.reserve(height * length);
         for (auto board_row : playerBoard) {
             for (char val : board_row) {
-                solver_board.push_back((val == MINE) ? 9 : val - '0');
+                solver_board.push_back((val == 'X') ? 9 : val - '0');
             }
         }
+
         msolver solver = msolver(solver_board, height, length);
         solver_status = solver.solve(row, column);
     }

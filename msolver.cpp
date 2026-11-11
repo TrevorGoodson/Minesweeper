@@ -1,4 +1,3 @@
-#pragma once
 #include "msolver.h"
 
 // public
@@ -10,7 +9,8 @@ msolver::msolver(vector<int> board, int height, int width) :
     status_board(vector<int>(size, UNKNOWN)),
     unsolved(map<int, unsolved_square>()),
     fresh(stack<int>()),
-    neighbor_buffer(vector<int>(8))
+    neighbor_buffer(vector<int>(8)),
+    n_gen(height, width)
 {}
 
 vector<int> msolver::solve(int start_row, int start_col) {
@@ -253,30 +253,39 @@ void msolver::uncover(int index) {
     coords_from_index(index).print();
     cout << endl;
 
-    int num_solved = get_neighbors(index, SOLVED);
-    for (int i = 0; i < num_solved; ++i) {
-        if (board[neighbor_buffer[i]] == MINE) {
+    vector<int> clue_squares; clue_squares.reserve(6);
+    n_gen.start(index); int neighbor;
+    do {
+        neighbor = n_gen.next();
+        if (status_board[neighbor] == UNKNOWN) {
+            clue_squares.push_back(neighbor);
+        }
+        if (board[neighbor] == MINE && status_board[neighbor] == SOLVED) {
             --square_val;
         }
-    }
+    } while (neighbor != n_gen.DONE);
 
-    int num_squares = get_neighbors(index, UNKNOWN);
+    // int num_solved = get_neighbors(index, SOLVED);
+    // for (int i = 0; i < num_solved; ++i) {
+    //     if (board[neighbor_buffer[i]] == MINE) {
+    //         --square_val;
+    //     }
+    // }
+
+    // int num_squares = get_neighbors(index, UNKNOWN);
 
     status_board[index] = FRESH;
     unsolved.insert({index,
-        unsolved_square {
+        unsolved_square{
             index,
-            vector<clue>{clue {
+            vector<clue>{clue{
                 square_val,
                 square_val,
-                copy_neighbor_buffer(num_squares)
+                clue_squares
+                //copy_neighbor_buffer(num_squares)
             }},
         }
     });
-    #ifdef INCLUDE_ERRORS
-        if  (unsolved.find(index) == unsolved.end())
-            throw runtime_error("Failed to insert square");
-    #endif
     fresh.push(index);
 
     freshen_neighbors(index);
@@ -449,4 +458,30 @@ void msolver::resolve_unsolved() {
     if (itr >= maxitr) {
         cout << "max itr hit" << endl;
     }
+}
+
+msolver::neighbor_generator::neighbor_generator(int height, int width) : 
+    height(height),
+    width(width),
+    DONE(height * width)
+{}
+
+void msolver::neighbor_generator::start(int index) {
+    row = int(index / width) + 1;
+    col = int(index % width) + 1;
+    i = 0;
+}
+
+int msolver::neighbor_generator::next() {
+    while (i < 8) {
+        ((i & 2) ? row : col) += (i < 4) ? -1 : 1;
+        ++i;
+
+        if (row < 0 || row >= height || col < 0 || col >= width)
+            continue;
+        
+        return row * width + col;
+    }
+
+    return DONE;
 }

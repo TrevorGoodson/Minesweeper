@@ -1,5 +1,3 @@
-#pragma once
-
 #include "board.h"
 
 // public:
@@ -7,7 +5,7 @@
 board::display::display(board& outer) : outer(outer) {}
 
 void board::display::PrintUI() {
-    clearScreen();
+    //clearScreen();
     PrintColumnLabel();
     for (int row = 0; row < outer.height; ++row) {
         PrintRowType1(row);
