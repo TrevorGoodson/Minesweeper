@@ -29,7 +29,11 @@ private:
         void print() {
             cout << min << "-" << max << ": ";
             for (int s : squares) {
-                cout << s << ", ";
+                coord{
+                    int(s / 14),
+                    int(s % 14)
+                }.print();
+                cout << ", ";
             }
         }
     };
@@ -48,6 +52,11 @@ private:
     struct coord {
         int row;
         int col;
+
+        string print() {
+            cout << "(" << char('a' + row) << ", " << char('A' + col) << ")";
+            return "";
+        }
     };
 
     int height;
@@ -58,7 +67,7 @@ private:
     map<int, unsolved_square> unsolved;
     stack<int> fresh;
     vector<int> neighbor_buffer;
-    int last_square_compared;
+    int current_square;
 
     inline int index_from_coords(int row, int col) {
         return row * width + col;
@@ -75,6 +84,27 @@ private:
         return vector<int>(neighbor_buffer.begin(), neighbor_buffer.begin() + num_neighbors);
     }
 
+    inline static bool equal(const clue& a, const clue& b) {
+        if (a.min != b.min || a.max != b.max || a.squares.size() != b.squares.size())
+            return false;
+        
+        for (int i = 0; i < a.squares.size(); ++ i) {
+            if (a.squares[i] != b.squares[i])
+                return false;
+        }
+        return true; 
+    }
+
+    inline static bool insert_if_unique(vector<clue>& clues, clue new_clue) {
+        for (const clue& c : clues) {
+            if (equal(c, new_clue)) {
+                return false;
+            }
+        }
+        clues.push_back(new_clue);
+        return true;
+    }
+
     int get_neighbors(int index, int status);
     int get_squares_with_overlapping_clues(int index);
     bool compare_clues(unsolved_square& square1, int clue_num1, unsolved_square& square2, int clue_num2);
@@ -83,6 +113,7 @@ private:
     void uncover(int index);
     void mark_mine(int index);
     void resolve_clues(unsolved_square& square);
+    void iterate_current_square();
     void resolve_fresh_squares();
     void resolve_unsolved();
 };

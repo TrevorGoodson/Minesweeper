@@ -8,7 +8,7 @@ board::board() :
     disp(*this),
     height(17),
     length(14),
-    mineDensity(0.17),
+    mineDensity(0.3),
     numMines(height * length * mineDensity),
     numMarkedMines(0),
     isDead(false),
