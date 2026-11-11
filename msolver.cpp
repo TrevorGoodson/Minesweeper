@@ -9,8 +9,9 @@ msolver::msolver(vector<int> board, int height, int width) :
     status_board(vector<int>(size, UNKNOWN)),
     unsolved(map<int, unsolved_square>()),
     fresh(stack<int>()),
-    neighbor_buffer(vector<int>(8)),
-    n_gen(height, width)
+    // neighbor_buffer(vector<int>(8)),
+    n_gen(height, width),
+    cc_gen(height, width)
 {}
 
 vector<int> msolver::solve(int start_row, int start_col) {
@@ -22,57 +23,57 @@ vector<int> msolver::solve(int start_row, int start_col) {
 }
 
 // private
-int msolver::get_neighbors(int index, int status) {
-    coord c = coords_from_index(index);
-    int row = c.row + 1;
-    int col = c.col + 1;
+// int msolver::get_neighbors(int index, int status) {
+//     coord c = coords_from_index(index);
+//     int row = c.row + 1;
+//     int col = c.col + 1;
 
-    int num_neighbors = 0;
-    for (int i = 0; i < 8; ++i) {
-        ((i & 2) ? row : col) += (i < 4) ? -1 : 1;
+//     int num_neighbors = 0;
+//     for (int i = 0; i < 8; ++i) {
+//         ((i & 2) ? row : col) += (i < 4) ? -1 : 1;
 
-        if (row < 0 || row >= height || col < 0 || col >= width)
-            continue;
+//         if (row < 0 || row >= height || col < 0 || col >= width)
+//             continue;
         
-        int neighbor = index_from_coords(row, col);
-        if (status_board[neighbor] == status) {
-            neighbor_buffer[num_neighbors] = neighbor;
-            ++num_neighbors;
-        }
-    }
+//         int neighbor = index_from_coords(row, col);
+//         if (status_board[neighbor] == status) {
+//             neighbor_buffer[num_neighbors] = neighbor;
+//             ++num_neighbors;
+//         }
+//     }
 
-    return num_neighbors;
-}
+//     return num_neighbors;
+// }
 
-int msolver::get_squares_with_overlapping_clues(int index) {
-    coord c = coords_from_index(index);
+// int msolver::get_squares_with_overlapping_clues(int index) {
+//     coord c = coords_from_index(index);
 
-    // cout << "checking square at ";
-    // c.print();
-    // cout << " for neighbors\n";
+//     // cout << "checking square at ";
+//     // c.print();
+//     // cout << " for neighbors\n";
 
-    int num_squares = 0;
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            if (i == 0 && j == 0)
-                continue;
-            int row = c.row + i;
-            int col = c.col + j;
+//     int num_squares = 0;
+//     for (int i = 0; i < 3; ++i) {
+//         for (int j = 0; j < 3; ++j) {
+//             if (i == 0 && j == 0)
+//                 continue;
+//             int row = c.row + i;
+//             int col = c.col + j;
 
-            if (row < 0 || row >= height || col < 0 || col >= width)
-                continue;
+//             if (row < 0 || row >= height || col < 0 || col >= width)
+//                 continue;
             
-            int nearby_square = index_from_coords(row, col);
-            int status = status_board[nearby_square];
-            if (status == FRESH || status == UNSOLVED) {
-                neighbor_buffer[num_squares] = nearby_square;
-                ++num_squares;
-            }
-        }
-    }
-    // cout << "found neighbors!\n";
-    return num_squares;
-}
+//             int nearby_square = index_from_coords(row, col);
+//             int status = status_board[nearby_square];
+//             if (status == FRESH || status == UNSOLVED) {
+//                 neighbor_buffer[num_squares] = nearby_square;
+//                 ++num_squares;
+//             }
+//         }
+//     }
+//     // cout << "found neighbors!\n";
+//     return num_squares;
+// }
 
 bool msolver::compare_clues(unsolved_square& square1, int clue_num1, unsolved_square& square2, int clue_num2) {
     clue solo1 = clue{
@@ -226,16 +227,13 @@ bool msolver::compare_squares(int index1, int index2) {
     return false;
 }
 
-void msolver::freshen_neighbors(int index) {
-    int num_neigbors = get_neighbors(index, UNSOLVED);
-    for (int i = 0; i < num_neigbors; ++i) {
-        #ifdef INCLUDE_ERRORS
-            if  (unsolved.find(neighbor_buffer[i]) == unsolved.end())
-                throw runtime_error("Square marked as unsolved on board is not found in map");
-        #endif
-
-        board[neighbor_buffer[i]] = FRESH;
-        fresh.push(neighbor_buffer[i]);
+void msolver::freshen_neighbors(int index) {    
+    for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
+        if (status_board[n] != UNSOLVED) {
+            continue;
+        }
+        board[n] = FRESH;
+        fresh.push(n);
     }
 }
 
@@ -254,25 +252,13 @@ void msolver::uncover(int index) {
     cout << endl;
 
     vector<int> clue_squares; clue_squares.reserve(6);
-    n_gen.start(index); int neighbor;
-    do {
-        neighbor = n_gen.next();
-        if (status_board[neighbor] == UNKNOWN) {
-            clue_squares.push_back(neighbor);
-        }
-        if (board[neighbor] == MINE && status_board[neighbor] == SOLVED) {
+    for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
+        if (status_board[n] == UNKNOWN) {
+            clue_squares.push_back(n);
+        } else if (board[n] == MINE && status_board[n] == SOLVED) {
             --square_val;
         }
-    } while (neighbor != n_gen.DONE);
-
-    // int num_solved = get_neighbors(index, SOLVED);
-    // for (int i = 0; i < num_solved; ++i) {
-    //     if (board[neighbor_buffer[i]] == MINE) {
-    //         --square_val;
-    //     }
-    // }
-
-    // int num_squares = get_neighbors(index, UNKNOWN);
+    }
 
     status_board[index] = FRESH;
     unsolved.insert({index,
@@ -282,7 +268,6 @@ void msolver::uncover(int index) {
                 square_val,
                 square_val,
                 clue_squares
-                //copy_neighbor_buffer(num_squares)
             }},
         }
     });
@@ -442,15 +427,25 @@ void msolver::resolve_unsolved() {
             }
         }
 
-        int num_squares = get_squares_with_overlapping_clues(current_square);
-        // cout << "num squares: " << num_squares << endl;
-        for (int i = 0; i < num_squares; ++i) {
-            int new_clues = compare_squares(current_square, neighbor_buffer[i]);
+        for (int n = cc_gen.start(current_square); n != cc_gen.DONE; n = cc_gen.next()) {
+            if (status_board[n] != FRESH && status_board[n] != UNSOLVED) {
+                continue;
+            }
+            bool new_clues = compare_squares(current_square, n);
             if (new_clues) {
                 num_itrs_no_updates = 0;
                 break;
             }
         }
+        // int num_squares = get_squares_with_overlapping_clues(current_square);
+        // // cout << "num squares: " << num_squares << endl;
+        // for (int i = 0; i < num_squares; ++i) {
+        //     int new_clues = compare_squares(current_square, neighbor_buffer[i]);
+        //     if (new_clues) {
+        //         num_itrs_no_updates = 0;
+        //         break;
+        //     }
+        // }
 
         iterate_current_square();
     }
@@ -466,10 +461,12 @@ msolver::neighbor_generator::neighbor_generator(int height, int width) :
     DONE(height * width)
 {}
 
-void msolver::neighbor_generator::start(int index) {
+int msolver::neighbor_generator::start(int index) {
     row = int(index / width) + 1;
     col = int(index % width) + 1;
     i = 0;
+
+    return next();
 }
 
 int msolver::neighbor_generator::next() {
@@ -481,6 +478,35 @@ int msolver::neighbor_generator::next() {
             continue;
         
         return row * width + col;
+    }
+
+    return DONE;
+}
+
+msolver::clue_compare_generator::clue_compare_generator(int height, int width) : 
+    height(height),
+    width(width),
+    DONE(height * width)
+{}
+
+int msolver::clue_compare_generator::start(int index) {
+    row = int(index / width);
+    col = int(index % width);
+    i = 0;
+
+    return next();
+}
+
+int msolver::clue_compare_generator::next() {
+    while (i < 8) {
+        ++i;
+        int r = row + (i / 3);
+        int c = col + (i % 3);
+
+        if (r < 0 || r >= height || c < 0 || c >= width)
+            continue;
+        
+        return r * width + col;
     }
 
     return DONE;
