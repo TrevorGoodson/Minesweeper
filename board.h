@@ -5,6 +5,7 @@
 #include <set>
 #include <windows.h>
 #include "helperFunctions.h"
+#include "msolver.h"
 using namespace std;
 
 class board {
@@ -67,6 +68,8 @@ private:
     set<vector<int>> resolvedSquares;
     const vector<string> borderKey = {" ", "│", "───────", "╮", "", "", "╭", "┬", "", "╯", "", "┤", "╰", "┴", "├", "┼"};
     //const vector<string> borderKey = {" ", "|", "-------", "+", "", "", "+", "+", "", "+", "", "+", "+", "+", "+", "+"};
+    vector<int> solver_status;
+    vector<int> solver_board;
 
     void SetBoard(int row, int column);
     void PlayGuess(int row, int column);

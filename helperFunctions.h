@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iomanip>
 #include <iostream>
 #include <random>
@@ -43,4 +44,12 @@ inline int digitToInt(char a) {
 inline void clearScreen() {
     //OS specific function
     system("cls");
+}
+
+static void print_int_vector(vector<int> vec) {
+    cout << "[";
+    for (int v : vec) {
+        cout << v << ", ";
+    }
+    cout << "]" << endl;
 }

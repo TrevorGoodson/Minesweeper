@@ -47,6 +47,22 @@ void board::display::PrintRowType2(int row) {
         cout << "  ";
         switch (outer.playerUI.at(row).at(column)) {
             case UNKNOWN_SQUARE:
+                if (!outer.solver_status.empty() &&
+                    outer.solver_status[row * outer.length + column] == 0) {
+                    cout << "   ";
+                    break;
+                }
+                if (!outer.solver_status.empty() &&
+                    outer.solver_status[row * outer.length + column] == 1) {
+                    cout << intToLowerCase(row) << intToUpperCase(column) << "?";
+                    break;
+                }
+                if (!outer.solver_status.empty() &&
+                    outer.solver_status[row * outer.length + column] == 3 &&
+                    outer.solver_board[row * outer.length + column] == 9) {
+                    cout << intToLowerCase(row) << "*" << intToUpperCase(column);
+                    break;
+                }
                 if (!outer.isDead) {
                     cout << intToLowerCase(row) << " " << intToUpperCase(column);
                     break;
