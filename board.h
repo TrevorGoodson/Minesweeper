@@ -68,7 +68,7 @@ private:
     set<vector<int>> resolvedSquares;
     const vector<string> borderKey = {" ", "│", "───────", "╮", "", "", "╭", "┬", "", "╯", "", "┤", "╰", "┴", "├", "┼"};
     //const vector<string> borderKey = {" ", "|", "-------", "+", "", "", "+", "+", "", "+", "", "+", "+", "+", "+", "+"};
-    vector<int> solver_status;
+    vector<msolver::Status> solver_status;
     vector<int> solver_board;
 
     void SetBoard(int row, int column);

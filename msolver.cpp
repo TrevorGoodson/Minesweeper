@@ -1,22 +1,46 @@
 #include "msolver.h"
+using std::vector; using std::stack;
+using std::map;    using std::set;
+using std::min;    using std::max;
+using std::cout;   using std::endl;
+using std::runtime_error;
 
 // public
 msolver::msolver(vector<int> board, int height, int width) :
     height(height),
     width(width),
     size(height * width),
+    OUT_OF_RANGE(size),
     board(board),
-    status_board(vector<int>(size, UNKNOWN)),
+    status_board(vector<Status>(size, Status::UNKNOWN)),
+    solution_graph(vector<node>(size)),
+    unknown_border(set<int>()),
     unsolved(map<int, unsolved_square>()),
     fresh(stack<int>()),
     n_gen(height, width),
-    cc_gen(height, width)
+    n_gen2(height, width),
+    sc_gen(height, width)
 {}
 
-vector<int> msolver::solve(int start_row, int start_col) {
+vector<msolver::Status> msolver::solve(int start_row, int start_col) {
     int first_guess = index_from_coords(start_row, start_col);
     current_square = first_guess;
     uncover(first_guess);
+    resolve_unsolved();
+    change_one_square();
+    // cout << "fresh: ";
+    // while (!fresh.empty()) {
+    //     cout << disp(fresh.top()) << " ";
+    //     fresh.pop();
+    // }
+    // cout << endl << "Unsolved: ";
+    // while (!unsolved.empty()) {
+    //     int i = unsolved.begin()->first;
+    //     cout << disp(i) << " ";
+    //     unsolved.erase(i);
+    // }
+    // cout << endl;
+    // cout << "Unsolved: " << unsolved.size() << endl;
     resolve_unsolved();
     return status_board;
 }
@@ -54,7 +78,6 @@ bool msolver::compare_clues(unsolved_square& square1, int clue_num1, unsolved_sq
     if (shared.squares.empty()) {
         return false;
     }
-
     if (solo1.squares.empty() && solo2.squares.empty()) {
         return false;
     }
@@ -114,24 +137,38 @@ bool msolver::compare_clues(unsolved_square& square1, int clue_num1, unsolved_sq
         return false;
     }
 
-    // We can put the shared clue in either
-    bool square1_updated = insert_if_unique(square1.clues, shared);
-    if (square1_updated) shared.print();
-    if (solo1_updated) {
-        if (insert_if_unique(square1.clues, solo1)) {
-            solo1.print();
-            square1_updated = true;
-        }
-        //square1_updated = insert_if_unique(square1.clues, solo1) || square1_updated;
-    }
-
-    bool square2_updated = false;
+    shared.contributors = square1.clues[clue_num1].contributors;
+    append_if_unique(shared.contributors, square2.clues[clue_num2].contributors);
     if (solo2_updated) {
-        square2_updated = insert_if_unique(square2.clues, solo2);
+        solo2.contributors = shared.contributors;
+        append_if_unique(solo2.contributors, square1.index);
     }
-    if (square2_updated) solo2.print();
+    append_if_unique(shared.contributors, square2.index);
+    if (solo1_updated) {
+        solo1.contributors = shared.contributors;
+    }
 
-    return square1_updated || square2_updated;
+    // We can put the shared clue in either
+    bool shared_added = insert_if_unique(square1.clues, shared);
+
+    bool solo1_added = false;
+    if (solo1_updated){
+        solo1_added = insert_if_unique(square1.clues, solo1);
+    }
+    if (solo1_added) {
+        solo1.print();
+        shared_added = true;
+    }
+
+    bool solo2_added = false;
+    if (solo2_updated) {
+        solo2_added = insert_if_unique(square2.clues, solo2);
+    }
+    if (solo2_added) {
+        solo2.print();
+    }
+
+    return shared_added || solo1_added || solo2_added;
 }
 
 bool msolver::compare_squares(int index1, int index2) {
@@ -144,15 +181,11 @@ bool msolver::compare_squares(int index1, int index2) {
             successful_comparison = compare_clues(unsolved[index1], i, unsolved[index2], j);
             
             if (successful_comparison) {
-                cout << " Successful comparison:  ";
-                coords_from_index(index1).print();
-                cout << " ( clue: ";
+                cout << " Successful comparison:  " << disp(index1) << " ( clue: ";
                 old.print();
-                cout << ") and ";
-                coords_from_index(index2).print();
-                cout << " ( clue: ";
+                cout << ") and " << disp(index2) << " ( clue: ";
                 old2.print();
-                cout << ")\n";
+                cout << ")" << endl;
             }
         }
     }
@@ -165,47 +198,68 @@ bool msolver::compare_squares(int index1, int index2) {
     if (successful_comparison) {
         fresh.push(index1);
         fresh.push(index2);
-        status_board[index1] = FRESH;
-        status_board[index2] = FRESH;
+        status_board[index1] = Status::FRESH;
+        status_board[index2] = Status::FRESH;
         return true;
     }
     return false;
 }
 
-void msolver::freshen_neighbors(int index) {    
-    for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
-        if (status_board[n] != UNSOLVED) {
-            continue;
-        }
-        board[n] = FRESH;
-        fresh.push(n);
-    }
-}
-
 void msolver::uncover(int index) {
-    int square_val = board[index];
-
     #ifdef INCLUDE_ERRORS
-        if  (status_board[index] != UNKNOWN)
-            throw runtime_error("Tried to uncover a known square");
-        if (square_val == MINE)
+        if (board[index] == MINE)
             throw runtime_error("Tried to uncover a mine");
     #endif
+    
+    //cout << "No mine: "; coords_from_index(index).print(); cout << endl;
 
-    cout << "No mine: ";
-    coords_from_index(index).print();
-    cout << endl;
-
+    int square_val = board[index];
+    unknown_border.erase(index);
+    
     vector<int> clue_squares; clue_squares.reserve(6);
     for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
-        if (status_board[n] == UNKNOWN) {
+        std::string print_n = disp(n);
+        if (status_board[n] == Status::UNKNOWN) {
             clue_squares.push_back(n);
-        } else if (board[n] == MINE && status_board[n] == SOLVED) {
+            unknown_border.insert(n);
+        } else if (board[n] == MINE) {
+            // Adjust the clue to only account for the unknown squares
             --square_val;
+        } else if (status_board[n] == Status::UNSOLVED) {
+            status_board[n] = Status::FRESH;
+            fresh.push(n);
+        }
+
+        /*  The algorithm to force the board to be solvable requires
+            that we keep track of the border of the unknown region.
+            Since we just uncovered a square, any bordering mines may no
+            longer be a part of that border */
+        if (!(board[n] == MINE && status_board[n] == Status::SOLVED)) {
+            continue;
+        }
+        if (unknown_border.find(n) == unknown_border.end()) {
+            continue;
+        }
+        bool bordering_unknown = false;
+        for (int m = n_gen2.start(n); m != n_gen2.DONE; m = n_gen2.next()) {
+            if (status_board[m] == Status::UNKNOWN) {
+                bordering_unknown = true;
+                break;
+            }
+        }
+        if (!bordering_unknown) {
+            unknown_border.erase(n);
         }
     }
 
-    status_board[index] = FRESH;
+    if (clue_squares.empty()) {
+        status_board[index] = Status::SOLVED;
+        return;
+    }
+
+    status_board[index] = Status::FRESH;
+    fresh.push(index);
+    unsolved.erase(index);
     unsolved.insert({index,
         unsolved_square{
             index,
@@ -216,24 +270,36 @@ void msolver::uncover(int index) {
             }},
         }
     });
-    fresh.push(index);
-    freshen_neighbors(index);
 }
 
 void msolver::mark_mine(int index) {
     #ifdef INCLUDE_ERRORS
-        if  (status_board[index] != UNKNOWN)
+        if  (status_board[index] != Status::UNKNOWN)
             throw runtime_error("Tried to mark a known square as a mine");
         if (board[index] != MINE)
             throw runtime_error("Falsly identified square as mine");
     #endif
 
-    cout << "Mine: ";
-    coords_from_index(index).print();
-    cout << endl;
+    // cout << "Mine: ";
+    // coords_from_index(index).print();
+    // cout << endl;
 
-    status_board[index] = SOLVED;
-    freshen_neighbors(index);
+    status_board[index] = Status::SOLVED;
+    bool bordering_unknown = false;
+    for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
+        if (status_board[n] == Status::UNKNOWN) {
+            bordering_unknown = true;
+        }
+        else if (status_board[n] == Status::UNSOLVED) {
+            status_board[n] = Status::FRESH;
+            fresh.push(n);
+        }
+    }
+    if (bordering_unknown) {
+        unknown_border.insert(index);
+    } else {
+        unknown_border.erase(index);
+    }
 }
 
 void msolver::resolve_clues(unsolved_square& square) {
@@ -251,7 +317,7 @@ void msolver::resolve_clues(unsolved_square& square) {
         int j = 0;
         while (j < clue_squares->size()) {
             int sq = (*clue_squares)[j];
-            if (status_board[sq] != UNKNOWN) {
+            if (status_board[sq] != Status::UNKNOWN) {
                 clue_squares->erase(clue_squares->begin() + j);
                 if (board[sq] == MINE) {
                     square.clues[i].min -= 1;
@@ -282,7 +348,13 @@ void msolver::resolve_clues(unsolved_square& square) {
         // 2) there are no mines
         else if (max == 0) {
             for (int sq : *clue_squares) {
-                uncover(sq); 
+                uncover(sq);
+                solution_graph[sq].solved_by.push_back(square.index);
+                solution_graph[square.index].solved.push_back(sq);
+                for (int contributor : square.clues[i].contributors) {
+                    solution_graph[sq].solved_by.push_back(contributor);
+                    solution_graph[contributor].solved.push_back(sq);
+                }
             }
 
             square.clues.erase(square.clues.begin() + i);
@@ -293,12 +365,19 @@ void msolver::resolve_clues(unsolved_square& square) {
         else if (num_squares == min) {
             for (int sq : *clue_squares) {
                 mark_mine(sq);
+                solution_graph[sq].solved_by.push_back(square.index);
+                solution_graph[square.index].solved.push_back(sq);
+                for (int contributor : square.clues[i].contributors) {
+                    solution_graph[sq].solved_by.push_back(contributor);
+                    solution_graph[contributor].solved.push_back(sq);
+                }
             }
 
             square.clues.erase(square.clues.begin() + i);
             i = 0;
         }
 
+        // Clue could not be resolved
         else {
             ++i;
         }
@@ -333,7 +412,7 @@ void msolver::resolve_fresh_squares() {
         #ifdef INCLUDE_ERRORS
             if (unsolved.find(square) == unsolved.end()) {
                 coords_from_index(square).print();
-                cout << endl << status_board[square] << endl;
+                cout << endl << static_cast<int>(status_board[square]) << endl;
                 cout << board[square] << endl;
                 throw runtime_error("Fresh square not found in unsolved");
             }
@@ -341,13 +420,13 @@ void msolver::resolve_fresh_squares() {
 
         resolve_clues(unsolved[square]);
 
-        status_board[square] = UNSOLVED;
+        status_board[square] = Status::UNSOLVED;
         if (unsolved[square].clues.empty()) {
             if (square == current_square) {
                 iterate_current_square();
             }
             unsolved.erase(square);
-            status_board[square] = SOLVED;
+            status_board[square] = Status::SOLVED;
         }
     }
 }
@@ -370,8 +449,8 @@ void msolver::resolve_unsolved() {
             }
         }
 
-        for (int n = cc_gen.start(current_square); n != cc_gen.DONE; n = cc_gen.next()) {
-            if (status_board[n] != UNSOLVED) {
+        for (int n = sc_gen.start(current_square); n != sc_gen.DONE; n = sc_gen.next()) {
+            if (status_board[n] != Status::UNSOLVED) {
                 continue;
             }
             bool new_clues = compare_squares(current_square, n);
@@ -389,8 +468,122 @@ void msolver::resolve_unsolved() {
     }
 }
 
+void msolver::remove_clues_with_contributor(int index) {
+    auto rcg = reverse_compare_generator(height, width);
+
+    stack<int> squares;
+    squares.push(index);
+    while (!squares.empty()) {
+        int sq = squares.top();
+        squares.pop();
+
+        for (int n = rcg.start(sq); n != rcg.DONE; n = rcg.next()) {
+            if (status_board[n] == Status::UNKNOWN || status_board[n] == Status::SOLVED) {
+                continue;
+            }
+
+            int i = 1; // Skip the first clue, it's never one with contributors
+            bool had_clue_with_contributor = false;
+            while (i < unsolved[n].clues.size()) {
+                if (contains(unsolved[n].clues[i].contributors, index)) {
+                    unsolved[n].clues.erase(unsolved[n].clues.begin() + i);
+                    had_clue_with_contributor = true;
+                } else {
+                    ++i;
+                }
+            }
+
+            if (had_clue_with_contributor) {
+                cout << disp(n) << " had a clue with contributor " << disp(index) << ". Removed it." << endl;
+                squares.push(n);
+            }
+        }
+    }
+}
+
+void msolver::unsolve_square(int index) {
+    auto ng = neighbor_generator(height, width);
+
+    // for (auto square : unsolved) {
+    //     unsolved[square.first].clues = vector<clue>{square.second.clues[0]};
+    // }
+
+    set<int> neighbors;
+
+    stack<int> squares = stack<int>();
+    squares.push(index);
+    while (!squares.empty()) {
+        int sq = squares.top();
+        squares.pop();
+
+        cout << "Unsolving square " << disp(sq) << endl;
+        status_board[sq] = Status::UNKNOWN;
+        unsolved.erase(sq);
+        for (int n = ng.start(sq); n != ng.DONE; n = ng.next()) {
+            if (status_board[n] != Status::UNKNOWN) {
+                neighbors.insert(n);
+                //uncover(n);
+            }
+        }
+
+        remove_clues_with_contributor(sq);
+        for (int solved : solution_graph[sq].solved) {
+            squares.push(solved);
+        }
+    }
+
+    for (int n : neighbors) {
+        uncover(n);
+    }
+}
+
+void msolver::remove_mine(int index) {
+    auto ng = neighbor_generator(height, width);
+    cout << "Removing mine: " << disp(index) << endl;
+
+    board[index] = 0;
+    for (int n = ng.start(index); n != ng.DONE; n = ng.next()) {
+        if (board[n] == MINE) {
+            ++board[index];
+        } else {
+            --board[n];
+        }
+        if (status_board[n] != Status::UNKNOWN) {
+            unsolve_square(n);
+        }
+    }
+}
+
+void msolver::add_mine(int index) {
+    auto ng = neighbor_generator(height, width);
+    cout << "Adding mine: " << disp(index) << endl;
+
+    board[index] = MINE;
+    for (int n = ng.start(index); n != ng.DONE; n = ng.next()) {
+        if (board[n] != MINE) {
+            ++board[n];
+        }
+        if (status_board[n] != Status::UNKNOWN) {
+            unsolve_square(n);
+        }
+    }
+}
+
+void msolver::change_one_square() {
+    // Get random square on border
+    auto sq_to_change = unknown_border.begin();
+    advance(sq_to_change, random_number(unknown_border.size() - 1));
+
+    if (board[*sq_to_change] == MINE) {
+        remove_mine(*sq_to_change);
+    }
+    else {
+        add_mine(*sq_to_change);
+    }
+}
+
 // neighbor generator
-msolver::neighbor_generator::neighbor_generator(int height, int width) : 
+msolver::neighbor_generator::neighbor_generator(int height, int width) :
     height(height),
     width(width),
     DONE(height * width)
@@ -419,13 +612,13 @@ inline int msolver::neighbor_generator::next() {
 }
 
 // clue compare generator
-msolver::clue_compare_generator::clue_compare_generator(int height, int width) : 
+msolver::square_compare_generator::square_compare_generator(int height, int width) :
     height(height),
     width(width),
     DONE(height * width)
 {}
 
-inline int msolver::clue_compare_generator::start(int index) {
+inline int msolver::square_compare_generator::start(int index) {
     row = int(index / width);
     col = int(index % width);
     i = 0;
@@ -433,7 +626,7 @@ inline int msolver::clue_compare_generator::start(int index) {
     return next();
 }
 
-inline int msolver::clue_compare_generator::next() {
+inline int msolver::square_compare_generator::next() {
     while (i < 8) {
         ++i;
         int r = row + (i / 3);
@@ -445,5 +638,39 @@ inline int msolver::clue_compare_generator::next() {
         return r * width + c;
     }
 
+    return DONE;
+}
+
+// reverse clue compare generator
+msolver::reverse_compare_generator::reverse_compare_generator(int height, int width) :
+    height(height),
+    width(width),
+    DONE(height * width)
+{}
+
+inline int msolver::reverse_compare_generator::start(int index) {
+    row = int(index / width);
+    col = int(index % width);
+    i = -2; j = -2;
+    return next();
+}
+
+inline int msolver::reverse_compare_generator::next() {
+    while (i <= 2) {
+        while (j <= 2) {
+            int r = row + i;
+            int c = col + j;
+            ++j;
+
+            if (i == 0 && j - 1 == 0)
+                continue;
+            if (r < 0 || r >= height || c < 0 || c >= width)
+                continue;
+            
+            return r * width + c;
+        }
+        ++i;
+        j = -2;
+    }
     return DONE;
 }

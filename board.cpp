@@ -115,6 +115,11 @@ void board::PlayGuess(int row, int column) {
 
         msolver solver = msolver(solver_board, height, length);
         solver_status = solver.solve(row, column);
+        // vector<int> print_ss = vector<int>(solver_status.size());
+        // for (int i = 0; i < solver_status.size(); ++i) {
+        //     print_ss[i] = static_cast<int>(solver_status[i]);
+        // }
+        // print_int_vector(print_ss);
     }
     if (playerUI.at(row).at(column) != UNKNOWN_SQUARE) {
         if (playerUI.at(row).at(column) != FLAG && playerUI.at(row).at(column) != ZERO) {

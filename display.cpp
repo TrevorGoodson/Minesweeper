@@ -46,7 +46,7 @@ void board::display::PrintRowType2(int row) {
         switch (outer.playerUI.at(row).at(column)) {
             case UNKNOWN_SQUARE:
                 if (!outer.solver_status.empty() &&
-                    outer.solver_status[row * outer.length + column] == 0) {
+                    outer.solver_status[row * outer.length + column] == msolver::Status::UNKNOWN) {
                     cout << "   ";
                     break;
                 }

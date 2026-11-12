@@ -1,26 +1,24 @@
 #pragma once
-
 #include <iomanip>
 #include <iostream>
 #include <random>
-using namespace std;
 
 inline int random_number(int a) {
-    static random_device rd;
-    static mt19937 gen(rd());
-    uniform_int_distribution<> distr(0, a);
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distr(0, a);
     return distr(gen);
 }
 
 template<class T>
-void PrintBoard(vector<vector<T>> inputBoard) {
+void PrintBoard(std::vector<std::vector<T>> inputBoard) {
     for (auto& row : inputBoard) {
         for (auto& column : row) {
-            cout << setw(3) << column;
+            std::cout << std::setw(3) << column;
         }
-        cout << endl;
+        std::cout << std::endl;
     }
-    cout << endl;
+    std::cout << std::endl;
 }
 
 inline char intToLowerCase(int a) {
@@ -46,10 +44,10 @@ inline void clearScreen() {
     system("cls");
 }
 
-static void print_int_vector(vector<int> vec) {
-    cout << "[";
+static void print_int_vector(std::vector<int> vec) {
+    std::cout << "[";
     for (int v : vec) {
-        cout << v << ", ";
+        std::cout << v << ", ";
     }
-    cout << "]" << endl;
+    std::cout << "]" << std::endl;
 }

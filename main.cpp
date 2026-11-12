@@ -2,17 +2,23 @@
 using namespace std;
 
 int main() {
-    try {
-        board player1;
-        while (!player1.GetHealth() && !player1.DidWin()) {
-            player1.PrintUI();
-            player1.GetGuess();
-        }
-        player1.ShowXs();
+    #if INCLUDE_ERRORS
+        try {
+    #endif
+
+    board player1;
+    while (!player1.GetHealth() && !player1.DidWin()) {
         player1.PrintUI();
-        return 0;
-    } catch (const std::exception& e) {
-        std::cout << "Caught an error: " << e.what() << '\n';
+        player1.GetGuess();
     }
+    player1.ShowXs();
+    player1.PrintUI();
+
+    #if INCLUDE_ERRORS
+        } catch (const std::exception& e) {
+            cout << "Caught an error: " << e.what() << '\n';
+        }
+    #endif
+
     return 0;
 }
