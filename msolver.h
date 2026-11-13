@@ -77,10 +77,10 @@ private:
             std::cout << "(" << char('a' + row) << ", " << char('A' + col) << ")";
         }
     };
-    struct node {
-        std::vector<int> solved_by;
-        std::vector<int> solved;
-    };
+    // struct node {
+    //     std::vector<int> solved_by;
+    //     std::vector<int> solved;
+    // };
     class neighbor_generator {
         public:
             neighbor_generator(int height, int width);
@@ -112,8 +112,7 @@ private:
     int height, width, size, current_square, first_guess;
     const int OUT_OF_RANGE;
     std::vector<Status> status_board;
-    std::vector<int> solution_order;
-    std::vector<node> solution_graph;
+    std::vector<std::vector<int>> solution_graph;
     std::set<int> unknown_border;
     std::map<int, unsolved_square> unsolved; // All UNSOLVED squares (including FRESH)
     std::stack<int> fresh; // All FRESH squares
@@ -130,6 +129,7 @@ private:
     void resolve_fresh_squares();
     void resolve_unsolved();
     void remove_clues_with_contributor(int index);
+    void search_up_sol_graph(int index);
     void unsolve_square(int index);
     void remove_mine(int index);
     void add_mine(int index);
@@ -140,6 +140,15 @@ private:
         result[0] = char(index / width) + 'a';
         result[1] = char(index % width) + 'A';
         return result;
+    }
+
+    std::string disp_c(clue& c) {
+        std::string result = "(" + std::to_string(c.min) + "-" + std::to_string(c.max) + " ";
+        for (int s : c.squares) {
+            result += disp(s);
+            result += " ";
+        }
+        return result + ")";
     }
     
     inline int index_from_coords(int row, int col) {
