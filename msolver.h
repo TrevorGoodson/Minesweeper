@@ -21,7 +21,7 @@ public:
 
     msolver(std::vector<int> board, int height, int width);
     std::vector<Status> solve(int start_row, int start_col);
-    
+    std::vector<int> board;
 private:
     enum board_key { MINE = 9 };
     struct clue {
@@ -109,10 +109,10 @@ private:
             int height, width, row, col, i, j;
     };
 
-    int height, width, size, current_square;
+    int height, width, size, current_square, first_guess;
     const int OUT_OF_RANGE;
-    std::vector<int> board;
     std::vector<Status> status_board;
+    std::vector<int> solution_order;
     std::vector<node> solution_graph;
     std::set<int> unknown_border;
     std::map<int, unsolved_square> unsolved; // All UNSOLVED squares (including FRESH)
@@ -163,7 +163,7 @@ private:
         return true; 
     }
 
-    inline static bool insert_if_unique(std::vector<clue>& clues, clue new_clue) {
+    static bool insert_if_unique(std::vector<clue>& clues, clue new_clue) {
         for (const clue& c : clues) {
             if (equal(c, new_clue)) {
                 return false;
@@ -173,7 +173,7 @@ private:
         return true;
     }
 
-    template <typename T> inline static bool append_if_unique(std::vector<T>& v, T x) {
+    template <typename T> static bool append_if_unique(std::vector<T>& v, T x) {
         for (T y : v) {
             if (y == x) {
                 return false;
@@ -183,7 +183,7 @@ private:
         return true;
     }
 
-    template <typename T> inline static bool append_if_unique(std::vector<T>& v1, std::vector<T>& v2) {
+    template <typename T> static bool append_if_unique(std::vector<T>& v1, std::vector<T>& v2) {
         bool result = false;
         for (T x : v2) {
             bool appended = append_if_unique(v1, x);
@@ -195,6 +195,16 @@ private:
     template <typename T> static bool contains(std::vector<T> v, T x) {
         for (T y : v) {
             if (y == x) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    template <typename T> static bool remove(std::vector<T> v, T x) {
+        for (int i = 0; i < v.size(); ++i) {
+            if (v[i] == x) {
+                v.erase(v.begin() + i);
                 return true;
             }
         }

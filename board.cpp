@@ -99,27 +99,37 @@ void board::SetBoard(int row, int column) {
         }
     }
 
+    solver_board.reserve(height * length);
+    for (auto board_row : playerBoard) {
+        for (char val : board_row) {
+            solver_board.push_back((val == 'X') ? 9 : val - '0');
+        }
+    }
+
+    msolver solver = msolver(solver_board, height, length);
+    solver_status = solver.solve(row, column);
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < length; ++j) {
+            int val = solver.board[i * length + j];
+            if (val == 9) {
+                playerBoard.at(i).at(j) = MINE;
+            } else {
+                playerBoard.at(i).at(j) = val + '0';
+            }
+        }
+    }
+    // vector<int> print_ss = vector<int>(solver_status.size());
+    // for (int i = 0; i < solver_status.size(); ++i) {
+    //     print_ss[i] = static_cast<int>(solver_status[i]);
+    // }
+    // print_int_vector(print_ss);
+
     RevealSquare(row, column);
 }
 
 void board::PlayGuess(int row, int column) {
     if (playerBoard.empty()) {
         SetBoard(row, column);
-        
-        solver_board.reserve(height * length);
-        for (auto board_row : playerBoard) {
-            for (char val : board_row) {
-                solver_board.push_back((val == 'X') ? 9 : val - '0');
-            }
-        }
-
-        msolver solver = msolver(solver_board, height, length);
-        solver_status = solver.solve(row, column);
-        // vector<int> print_ss = vector<int>(solver_status.size());
-        // for (int i = 0; i < solver_status.size(); ++i) {
-        //     print_ss[i] = static_cast<int>(solver_status[i]);
-        // }
-        // print_int_vector(print_ss);
     }
     if (playerUI.at(row).at(column) != UNKNOWN_SQUARE) {
         if (playerUI.at(row).at(column) != FLAG && playerUI.at(row).at(column) != ZERO) {
