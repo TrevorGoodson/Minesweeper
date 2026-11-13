@@ -28,11 +28,14 @@ vector<msolver::Status> msolver::solve(int start_row, int start_col) {
     uncover(first_guess);
     resolve_unsolved();
 
-    int i = 0; int max_iter = 50;
+    int i = 0; int max_iter = 100;
     while (!unknown_border.empty() && i < max_iter) {
         ++i;
         change_one_square();
         resolve_unsolved();
+    }
+    if (i == max_iter) {
+        cout << "max changes hit" << endl;
     }
 
     // cout << "\nInitial solution graph:" << endl;
@@ -237,6 +240,17 @@ void msolver::maybe_remove_mine_from_unknown_border(int index) {
     unknown_border.erase(index);
 }
 
+void msolver::maybe_remove_unknown_from_unknown_border(int index) {
+    auto ng2 = neighbor_generator(height, width);
+
+    for (int m = ng2.start(index); m != ng2.DONE; m = ng2.next()) {
+        if (status_board[m] != Status::UNKNOWN && board[index] != MINE) {
+            return;
+        }
+    }
+    unknown_border.erase(index);
+}
+
 void msolver::uncover(int index) {
     #ifdef INCLUDE_ERRORS
         if (board[index] == MINE) {
@@ -433,11 +447,11 @@ void msolver::resolve_fresh_squares() {
         if (unsolved.find(square) == unsolved.end()) {
             // This happens only after unsolving squares
             // Just ignoring it doesn't seem to cause any issues though
-            if (status_board[square] == Status::SOLVED) {
-                cout << "solved square (" << disp(square) << ") found in fresh" << endl;
-            } else if (status_board[square] == Status::UNKNOWN) {
-                cout << "unknown square (" << disp(square) << ") found in fresh" << endl;
-            }
+            // if (status_board[square] == Status::SOLVED) {
+            //     cout << "solved square (" << disp(square) << ") found in fresh" << endl;
+            // } else if (status_board[square] == Status::UNKNOWN) {
+            //     cout << "unknown square (" << disp(square) << ") found in fresh" << endl;
+            // }
             continue;
         }
 
@@ -574,11 +588,9 @@ void msolver::unsolve_square(int index) {
     auto ng = neighbor_generator(height, width);
     auto ng2 = neighbor_generator(height, width);
 
-    set<int> already_unsolved;
     set<int> neighbors_needing_reset;
     stack<int> squares = stack<int>();
     squares.push(index);
-    already_unsolved.insert(index);
     while (!squares.empty()) {
         int sq = squares.top();
         squares.pop();
@@ -587,22 +599,10 @@ void msolver::unsolve_square(int index) {
         status_board[sq] = Status::UNKNOWN;
         unsolved.erase(sq);
         search_up_sol_graph(sq);
-        // for (int solved_by : solution_graph[sq].solved_by) {
-        //     remove(solution_graph[solved_by].solved, sq);
-        // }
 
         for (int n = ng.start(sq); n != ng.DONE; n = ng.next()) {
             if (status_board[n] == Status::UNKNOWN) {
-                bool bordering_known = false;
-                for (int m = ng2.start(n); m != ng2.DONE; m = ng2.next()) {
-                    if (status_board[m] != Status::UNKNOWN && board[n] != MINE) {
-                        bordering_known = true;
-                        break;
-                    }
-                }
-                if (!bordering_known) {
-                    unknown_border.erase(n);
-                }
+                maybe_remove_unknown_from_unknown_border(n);
                 continue;
             }
             if (board[n] == MINE) {
@@ -612,28 +612,26 @@ void msolver::unsolve_square(int index) {
                 unsolved.erase(n);
                 status_board[n] = Status::UNKNOWN;
                 neighbors_needing_reset.insert(n);
+                for (int m = ng2.start(n); m != ng2.DONE; m = ng2.next()) {
+                    if (status_board[m] == Status::UNKNOWN) {
+                        maybe_remove_unknown_from_unknown_border(m);
+                    }
+                }
             }
         }
-
-        // cout << "Unsolving square " << disp(sq) << endl;
-        // if (disp(sq) == "cM") {
-        //     cout << "here" << endl;
-        // }
 
         remove_clues_with_contributor(sq);
         for (int solved : solution_graph[sq]) {
             if (status_board[solved] != Status::UNKNOWN) {
-
                 squares.push(solved);
             }
-            // if (already_unsolved.find(solved) == already_unsolved.end()) {
-            //     already_unsolved.insert(solved);
-            // }
         }
         solution_graph[sq].clear();
     }
 
     for (int n : neighbors_needing_reset) {
+        // unsolved.erase(n);
+        // status_board[n] = Status::UNKNOWN;
         uncover(n);
     }
 }
@@ -671,6 +669,29 @@ void msolver::add_mine(int index) {
 }
 
 void msolver::change_one_square() {
+    unknown_border.clear();
+    for (int i = 0; i < size; ++i) {
+        // if (board[i] == MINE && status_board[i] != Status::UNKNOWN) {
+        //     for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
+        //         if (status_board[n] == Status::UNKNOWN) {
+        //             unknown_border.insert(i);
+        //             break;
+        //         }
+        //     }
+        // }
+        if (status_board[i] == Status::UNKNOWN) {
+            for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
+                if (status_board[n] != Status::UNKNOWN) {
+                    unknown_border.insert(i);
+                    break;
+                }
+            }
+        }
+    }
+    if (unknown_border.empty()){
+        return;
+    }
+
     // Get random square on border
     auto sq_to_change_itr = unknown_border.begin();
     advance(sq_to_change_itr, random_number(unknown_border.size() - 1));
