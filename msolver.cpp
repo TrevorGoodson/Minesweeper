@@ -181,13 +181,19 @@ bool msolver::compare_clues(unsolved_square& square1, int clue_num1, unsolved_sq
 }
 
 bool msolver::compare_squares(int index1, int index2) {
-    bool successful_comparison = false;
-    for (int i = 0; i < unsolved[index1].clues.size() && !successful_comparison; ++i) {
-        for (int j = 0; j < unsolved[index2].clues.size() && !successful_comparison; ++j) {
+    for (int i = 0; i < unsolved[index1].clues.size(); ++i) {
+        for (int j = 0; j < unsolved[index2].clues.size(); ++j) {
             clue old = unsolved[index1].clues[i];
             clue old2 = unsolved[index2].clues[j];
 
-            successful_comparison = compare_clues(unsolved[index1], i, unsolved[index2], j);
+            bool new_clues_added = compare_clues(unsolved[index1], i, unsolved[index2], j);
+            if (new_clues_added) {
+                fresh.push(index1);
+                fresh.push(index2);
+                status_board[index1] = Status::FRESH;
+                status_board[index2] = Status::FRESH;
+                return true;
+            }
             
             // if (successful_comparison) {
             //     cout << " Successful comparison:  " << disp(index1) << " ( clue: ";
@@ -198,19 +204,11 @@ bool msolver::compare_squares(int index1, int index2) {
             // }
         }
     }
-
     #ifdef INCLUDE_ERRORS
         if  (unsolved.find(index1) == unsolved.end() || unsolved.find(index2) == unsolved.end())
             throw runtime_error("Compare squares called with squares not found in unsolved");
     #endif
 
-    if (successful_comparison) {
-        fresh.push(index1);
-        fresh.push(index2);
-        status_board[index1] = Status::FRESH;
-        status_board[index2] = Status::FRESH;
-        return true;
-    }
     return false;
 }
 
@@ -358,17 +356,12 @@ void msolver::resolve_clues(unsolved_square& square) {
         // 2) there are no mines
         else if (max == 0) {
             for (int sq : *clue_squares) {
-                // if (disp(sq) == "bM") {
-                //     cout << disp(square.index) << endl;
-                //     cout << disp((*clue_squares)[0]) << " " << disp((*clue_squares)[1]) << endl;
-                //     cout << "here" << endl;
-                // }
                 uncover(sq);
-                solution_graph[sq].solved_by.push_back(square.index);
-                solution_graph[square.index].solved.push_back(sq);
+                append_if_unique(solution_graph[sq].solved_by, square.index);
+                append_if_unique(solution_graph[square.index].solved, sq);
                 for (int contributor : square.clues[i].contributors) {
-                    solution_graph[sq].solved_by.push_back(contributor);
-                    solution_graph[contributor].solved.push_back(sq);
+                    append_if_unique(solution_graph[sq].solved_by, contributor);
+                    append_if_unique(solution_graph[contributor].solved, sq);
                 }
             }
             if (i == 0) removed_first = true;
@@ -380,11 +373,11 @@ void msolver::resolve_clues(unsolved_square& square) {
         else if (num_squares == min) {
             for (int sq : *clue_squares) {
                 mark_mine(sq);
-                solution_graph[sq].solved_by.push_back(square.index);
-                solution_graph[square.index].solved.push_back(sq);
+                append_if_unique(solution_graph[sq].solved_by, square.index);
+                append_if_unique(solution_graph[square.index].solved, sq);
                 for (int contributor : square.clues[i].contributors) {
-                    solution_graph[sq].solved_by.push_back(contributor);
-                    solution_graph[contributor].solved.push_back(sq);
+                    append_if_unique(solution_graph[sq].solved_by, contributor);
+                    append_if_unique(solution_graph[contributor].solved, sq);
                 }
             }
             if (i == 0) removed_first = true;
