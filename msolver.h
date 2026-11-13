@@ -122,6 +122,7 @@ private:
 
     bool compare_clues(unsolved_square& square1, int clue_num1, unsolved_square& square2, int clue_num2);
     bool compare_squares(int index1, int index2);
+    void maybe_remove_mine_from_unknown_border(int index);
     void uncover(int index);
     void mark_mine(int index);
     void resolve_clues(unsolved_square& square);

@@ -214,6 +214,18 @@ bool msolver::compare_squares(int index1, int index2) {
     return false;
 }
 
+void msolver::maybe_remove_mine_from_unknown_border(int index) {
+    if (unknown_border.find(index) == unknown_border.end()) {
+        return;
+    }
+    for (int n = n_gen2.start(index); n != n_gen2.DONE; n = n_gen2.next()) {
+        if (status_board[n] == Status::UNKNOWN) {
+            return;
+        }
+    }
+    unknown_border.erase(index);
+}
+
 void msolver::uncover(int index) {
     #ifdef INCLUDE_ERRORS
         if (board[index] == MINE) {
@@ -227,40 +239,18 @@ void msolver::uncover(int index) {
     
     vector<int> clue_squares; clue_squares.reserve(6);
     for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
-        std::string print_n = disp(n);
         if (status_board[n] == Status::UNKNOWN) {
             clue_squares.push_back(n);
             unknown_border.insert(n);
-            continue;
         }
-        if (status_board[n] == Status::UNSOLVED) {
+        else if (status_board[n] == Status::UNSOLVED) {
             status_board[n] = Status::FRESH;
             fresh.push(n);
-            continue;
         }
-        if (board[n] != MINE) {
-            continue;
+        else if (board[n] == MINE) {
+            --square_val; // Adjust the clue to only account for the unknown squares
+            maybe_remove_mine_from_unknown_border(n);
         } 
-        // Adjust the clue to only account for the unknown squares
-        --square_val;
-        
-        /*  The algorithm to force the board to be solvable requires
-            that we keep track of the border of the unknown region.
-            Since we just uncovered a square, any bordering mines may no
-            longer be a part of that border */
-        if (unknown_border.find(n) == unknown_border.end()) {
-            continue;
-        }
-        bool bordering_unknown = false;
-        for (int m = n_gen2.start(n); m != n_gen2.DONE; m = n_gen2.next()) {
-            if (status_board[m] == Status::UNKNOWN) {
-                bordering_unknown = true;
-                break;
-            }
-        }
-        if (!bordering_unknown) {
-            unknown_border.erase(n);
-        }
     }
 
     if (clue_squares.empty()) {
@@ -301,35 +291,16 @@ void msolver::mark_mine(int index) {
     for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
         if (status_board[n] == Status::UNKNOWN) {
             bordering_unknown = true;
-            continue;
         }
-        if (status_board[n] == Status::UNSOLVED) {
+        else if (status_board[n] == Status::UNSOLVED) {
             status_board[n] = Status::FRESH;
             fresh.push(n);
-            continue;
         }
-        if (board[n] != MINE) {
-            continue;
-        }
-
-        /*  The algorithm to force the board to be solvable requires
-            that we keep track of the border of the unknown region.
-            Since we just marked a mine, any bordering mines may no
-            longer be a part of that border */
-        if (unknown_border.find(n) == unknown_border.end()) {
-            continue;
-        }
-        bool bordering_unknown = false;
-        for (int m = n_gen2.start(n); m != n_gen2.DONE; m = n_gen2.next()) {
-            if (status_board[m] == Status::UNKNOWN) {
-                bordering_unknown = true;
-                break;
-            }
-        }
-        if (!bordering_unknown) {
-            unknown_border.erase(n);
+        else if (board[n] == MINE) {
+            maybe_remove_mine_from_unknown_border(n);
         }
     }
+
     if (bordering_unknown) {
         unknown_border.insert(index);
     } else {
@@ -570,6 +541,16 @@ void msolver::unsolve_square(int index) {
 
         for (int n = ng.start(sq); n != ng.DONE; n = ng.next()) {
             if (status_board[n] == Status::UNKNOWN) {
+                bool bordering_known = false;
+                for (int m = ng2.start(n); m != ng2.DONE; m = ng2.next()) {
+                    if (status_board[m] != Status::UNKNOWN && board[n] != MINE) {
+                        bordering_known = true;
+                        break;
+                    }
+                }
+                if (!bordering_known) {
+                    unknown_border.erase(n);
+                }
                 continue;
             }
             if (board[n] == MINE) {
