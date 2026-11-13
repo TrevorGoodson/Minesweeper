@@ -29,7 +29,7 @@ vector<msolver::Status> msolver::solve(int start_row, int start_col) {
     resolve_unsolved();
 
     int i = 0; int max_iter = 50;
-    while (!unsolved.empty() && i < max_iter) {
+    while (!unknown_border.empty() && i < max_iter) {
         ++i;
         change_one_square();
         resolve_unsolved();
@@ -344,6 +344,7 @@ void msolver::resolve_clues(unsolved_square& square) {
         - removes the clue & resets i to 0 (clue is resolved; new squares are uncovered)
         - removes the clue & does not adjust i (clue is resolved; no new squares are uncovered)
     */
+    bool removed_first = false;
     int i = 0;
     while (i < square.clues.size()) {
         vector<int> * clue_squares = &square.clues[i].squares;
@@ -380,6 +381,7 @@ void msolver::resolve_clues(unsolved_square& square) {
         // 1) there are no more squares
         if (num_squares == 0) {
             square.clues.erase(square.clues.begin() + i);
+            if (i == 0) removed_first = true;
         }
 
         // 2) there are no mines
@@ -398,7 +400,7 @@ void msolver::resolve_clues(unsolved_square& square) {
                     solution_graph[contributor].solved.push_back(sq);
                 }
             }
-
+            if (i == 0) removed_first = true;
             square.clues.erase(square.clues.begin() + i);
             i = 0;
         }
@@ -414,7 +416,7 @@ void msolver::resolve_clues(unsolved_square& square) {
                     solution_graph[contributor].solved.push_back(sq);
                 }
             }
-
+            if (i == 0) removed_first = true;
             square.clues.erase(square.clues.begin() + i);
             i = 0;
         }
@@ -423,6 +425,9 @@ void msolver::resolve_clues(unsolved_square& square) {
         else {
             ++i;
         }
+    }
+    if (removed_first && square.clues.size() != 0) {
+        cout << "removed first clue but still has remaining clues" << endl;
     }
 }
 
@@ -467,6 +472,9 @@ void msolver::resolve_fresh_squares() {
             if (square == current_square) {
                 iterate_current_square();
             }
+            if (unknown_border.find(square) != unknown_border.end()) {
+                cout << "resolved square found in unknown border" << endl;
+            }
             unsolved.erase(square);
             status_board[square] = Status::SOLVED;
         }
@@ -492,7 +500,7 @@ void msolver::resolve_unsolved() {
         }
 
         for (int n = sc_gen.start(current_square); n != sc_gen.DONE; n = sc_gen.next()) {
-            if (status_board[n] != Status::UNSOLVED) {
+            if (status_board[n] != Status::UNSOLVED && status_board[n] != Status::FRESH) {
                 continue;
             }
             bool new_clues = compare_squares(current_square, n);
@@ -561,34 +569,14 @@ void msolver::unsolve_square(int index) {
         }
 
         for (int n = ng.start(sq); n != ng.DONE; n = ng.next()) {
-            if (status_board[n] != Status::UNKNOWN) {
-                unknown_border.insert(sq);
-            } else if (board[n] == MINE){
+            if (status_board[n] == Status::UNKNOWN) {
+                continue;
+            }
+            if (board[n] == MINE) {
                 unknown_border.insert(n);
-            }
-            if (status_board[n] != Status::UNKNOWN && board[n] != MINE) {
+            } else {
+                unknown_border.insert(sq);
                 neighbors_needing_reset.insert(n);
-            }
-            if (status_board[n] != Status::UNKNOWN) {
-                continue;
-            }
-
-            /*  The algorithm to force the board to be solvable requires
-            that we keep track of the border of the unknown region.
-            Since we just uncovered a square, any bordering mines may no
-            longer be a part of that border */
-            if (unknown_border.find(n) == unknown_border.end()) {
-                continue;
-            }
-            bool n_bordering_known = false;
-            for (int m = ng2.start(n); m != ng2.DONE; m = ng2.next()) {
-                if (status_board[m] != Status::UNKNOWN) {
-                    n_bordering_known = true;
-                    break;
-                }
-            }
-            if (!n_bordering_known) {
-                unknown_border.erase(n);
             }
         }
 
@@ -661,14 +649,6 @@ void msolver::change_one_square() {
     }
 
     current_square = unsolved.begin()->first;
-
-    // unsolved = map<int, unsolved_square>();
-    // solution_graph = vector<node>(size);
-    // unknown_border = set<int>();
-    // status_board = vector<Status>(size, Status::UNKNOWN);
-    // current_square = first_guess;
-
-    // uncover(first_guess);
 }
 
 // neighbor generator
