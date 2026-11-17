@@ -372,9 +372,9 @@ void msolver::resolve_clues(unsolved_square& square) {
                 uncover(sq);
 
                 append_if_unique(solution_graph[square.index], sq);
-                // for (int contributor : square.clues[i].contributors) {
-                //     append_if_unique(solution_graph[contributor], sq);
-                // }
+                for (int contributor : square.clues[i].contributors) {
+                    append_if_unique(solution_graph[contributor], sq);
+                }
             }
 
             if (i == 0) removed_first = true;
@@ -388,9 +388,9 @@ void msolver::resolve_clues(unsolved_square& square) {
                 mark_mine(sq);
 
                 append_if_unique(solution_graph[square.index], sq);
-                // for (int contributor : square.clues[i].contributors) {
-                //     append_if_unique(solution_graph[contributor], sq);
-                // }
+                for (int contributor : square.clues[i].contributors) {
+                    append_if_unique(solution_graph[contributor], sq);
+                }
             }
             if (i == 0) removed_first = true;
             square.clues.erase(square.clues.begin() + i);
@@ -577,18 +577,6 @@ void msolver::unsolve_square(set<int>& indexes) {
         squares.push(index);
     }
 
-    // cout << "Solution Graph: " << endl;
-    // for (int i = 0; i < solution_graph.size(); ++i) {
-    //     if (solution_graph[i].empty()) {
-    //         continue;
-    //     }
-    //     cout << disp(i) << ": ";
-    //     for (auto x : solution_graph[i]) {
-    //         cout << disp(x) << " ";
-    //     }
-    //     cout << endl;
-    // }
-
     cout << "unsolving: ";
     while (!squares.empty()) {
         int sq = squares.top();
@@ -607,17 +595,10 @@ void msolver::unsolve_square(set<int>& indexes) {
         }
 
         remove_clues_with_contributor(sq);
-        if (solution_graph[sq].size() != 0) {
-            cout << "(solved: ";
-        }
         for (int solved : solution_graph[sq]) {
             if (status_board[solved] != Status::UNKNOWN) {
                 squares.push(solved);
-                cout << disp(solved) << " ";
             }
-        }
-        if (solution_graph[sq].size() != 0) {
-            cout << ") ";
         }
         solution_graph[sq].clear();
     }
@@ -692,7 +673,7 @@ void msolver::change_one_square() {
         // }
         if (status_board[i] == Status::UNKNOWN) {
             for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
-                if (status_board[n] != Status::UNKNOWN) {
+                if (status_board[n] != Status::UNKNOWN && board[n] != MINE) {
                     unknown_border.insert(i);
                     break;
                 }
