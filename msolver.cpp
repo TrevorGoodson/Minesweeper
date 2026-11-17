@@ -29,6 +29,7 @@ vector<msolver::Status> msolver::solve(int start_row, int start_col) {
     resolve_unsolved();
 
     int i = 0; int max_iter = 100;
+    unknown_border.insert(first_guess);
     while (!unknown_border.empty() && i < max_iter) {
         ++i;
         change_one_square();
@@ -260,13 +261,11 @@ void msolver::uncover(int index) {
     #endif
     
     int square_val = board[index];
-    unknown_border.erase(index);
     
     vector<int> clue_squares; clue_squares.reserve(6);
     for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
         if (status_board[n] == Status::UNKNOWN) {
             clue_squares.push_back(n);
-            unknown_border.insert(n);
         }
         else if (status_board[n] == Status::UNSOLVED) {
             status_board[n] = Status::FRESH;
@@ -274,7 +273,6 @@ void msolver::uncover(int index) {
         }
         else if (board[n] == MINE) {
             --square_val; // Adjust the clue to only account for the unknown squares
-            maybe_remove_mine_from_unknown_border(n);
         } 
     }
 
@@ -315,24 +313,11 @@ void msolver::mark_mine(int index) {
     // cout << endl;
 
     status_board[index] = Status::SOLVED;
-    bool bordering_unknown = false;
     for (int n = n_gen.start(index); n != n_gen.DONE; n = n_gen.next()) {
-        if (status_board[n] == Status::UNKNOWN) {
-            bordering_unknown = true;
-        }
-        else if (status_board[n] == Status::UNSOLVED) {
+        if (status_board[n] == Status::UNSOLVED) {
             status_board[n] = Status::FRESH;
             fresh.push(n);
         }
-        else if (board[n] == MINE) {
-            maybe_remove_mine_from_unknown_border(n);
-        }
-    }
-
-    if (bordering_unknown) {
-        unknown_border.insert(index);
-    } else {
-        unknown_border.erase(index);
     }
 }
 
@@ -471,9 +456,9 @@ void msolver::resolve_fresh_squares() {
             if (square == current_square) {
                 iterate_current_square();
             }
-            if (unknown_border.find(square) != unknown_border.end()) {
-                cout << "resolved square found in unknown border" << endl;
-            }
+            // if (unknown_border.find(square) != unknown_border.end()) {
+            //     cout << "resolved square found in unknown border" << endl;
+            // }
             unsolved.erase(square);
             status_board[square] = Status::SOLVED;
             remove_clues_with_contributor(square);
@@ -601,22 +586,10 @@ void msolver::unsolve_square(int index) {
         search_up_sol_graph(sq);
 
         for (int n = ng.start(sq); n != ng.DONE; n = ng.next()) {
-            if (status_board[n] == Status::UNKNOWN) {
-                maybe_remove_unknown_from_unknown_border(n);
-                continue;
-            }
-            if (board[n] == MINE) {
-                unknown_border.insert(n);
-            } else {
-                unknown_border.insert(sq);
+            if (status_board[n] != Status::UNKNOWN && board[n] != MINE) {
                 unsolved.erase(n);
                 status_board[n] = Status::UNKNOWN;
                 neighbors_needing_reset.insert(n);
-                for (int m = ng2.start(n); m != ng2.DONE; m = ng2.next()) {
-                    if (status_board[m] == Status::UNKNOWN) {
-                        maybe_remove_unknown_from_unknown_border(m);
-                    }
-                }
             }
         }
 
