@@ -131,7 +131,7 @@ private:
     void resolve_unsolved();
     void remove_clues_with_contributor(int index);
     void remove_from_solution_graph(int index);
-    void unsolve_square(int index);
+    void unsolve_square(std::set<int>& indexes);
     void remove_mine(int index);
     void add_mine(int index);
     void change_one_square();
