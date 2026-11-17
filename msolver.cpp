@@ -536,7 +536,7 @@ void msolver::remove_clues_with_contributor(int index) {
     }
 }
 
-void msolver::search_up_sol_graph(int index) {
+void msolver::remove_from_solution_graph(int index) {
     // for (int i = 0; i < size; ++i) {
     //     for (int j = 0; j < solution_graph[i].size(); ++j) {
     //         if (solution_graph[i][j] == index) {
@@ -583,12 +583,10 @@ void msolver::unsolve_square(int index) {
 
         status_board[sq] = Status::UNKNOWN;
         unsolved.erase(sq);
-        search_up_sol_graph(sq);
+        remove_from_solution_graph(sq);
 
         for (int n = ng.start(sq); n != ng.DONE; n = ng.next()) {
             if (status_board[n] != Status::UNKNOWN && board[n] != MINE) {
-                unsolved.erase(n);
-                status_board[n] = Status::UNKNOWN;
                 neighbors_needing_reset.insert(n);
             }
         }
@@ -603,8 +601,9 @@ void msolver::unsolve_square(int index) {
     }
 
     for (int n : neighbors_needing_reset) {
-        // unsolved.erase(n);
-        // status_board[n] = Status::UNKNOWN;
+        unsolved.erase(n);
+        status_board[n] = Status::UNKNOWN;
+        solution_graph[n].clear();
         uncover(n);
     }
 }
@@ -619,9 +618,9 @@ void msolver::remove_mine(int index) {
             ++board[index];
         } else {
             --board[n];
-        }
-        if (status_board[n] != Status::UNKNOWN) {
-            unsolve_square(n);
+            if (status_board[n] != Status::UNKNOWN) {
+                unsolve_square(n);
+            }
         }
     }
 }
@@ -634,9 +633,9 @@ void msolver::add_mine(int index) {
     for (int n = ng.start(index); n != ng.DONE; n = ng.next()) {
         if (board[n] != MINE) {
             ++board[n];
-        }
-        if (status_board[n] != Status::UNKNOWN) {
-            unsolve_square(n);
+            if (status_board[n] != Status::UNKNOWN) {
+                unsolve_square(n);
+            }
         }
     }
 }
