@@ -663,15 +663,15 @@ void msolver::add_mine(int index) {
 void msolver::change_one_square() {
     unknown_border.clear();
     for (int i = 0; i < size; ++i) {
-        // if (board[i] == MINE && status_board[i] != Status::UNKNOWN) {
-        //     for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
-        //         if (status_board[n] == Status::UNKNOWN) {
-        //             unknown_border.insert(i);
-        //             break;
-        //         }
-        //     }
-        // }
-        if (status_board[i] == Status::UNKNOWN) {
+        if (board[i] == MINE && status_board[i] != Status::UNKNOWN) {
+            for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
+                if (status_board[n] == Status::UNKNOWN) {
+                    unknown_border.insert(i);
+                    break;
+                }
+            }
+        }
+        else if (status_board[i] == Status::UNKNOWN) {
             for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
                 if (status_board[n] != Status::UNKNOWN && board[n] != MINE) {
                     unknown_border.insert(i);
