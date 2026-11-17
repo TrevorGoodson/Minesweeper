@@ -534,14 +534,18 @@ void msolver::remove_clues_with_contributor(int index) {
 }
 
 void msolver::remove_from_solution_graph(int index) {
-    // for (int i = 0; i < size; ++i) {
-    //     for (int j = 0; j < solution_graph[i].size(); ++j) {
-    //         if (solution_graph[i][j] == index) {
-    //             solution_graph[i].erase(solution_graph[i].begin() + j);
-    //         }
-    //     }
-    // }
-    // return;
+    for (int i = 0; i < size; ++i) {
+        if (contains(solution_graph[i], index)) {
+            remove(solution_graph[i], index);
+            // squares.push(n);
+        }
+        // for (int j = 0; j < solution_graph[i].size(); ++j) {
+        //     if (solution_graph[i][j] == index) {
+        //         solution_graph[i].erase(solution_graph[i].begin() + j);
+        //     }
+        // }
+    }
+    return;
     auto rcg = reverse_compare_generator(height, width);
 
     stack<int> squares;
@@ -551,9 +555,9 @@ void msolver::remove_from_solution_graph(int index) {
         squares.pop();
 
         for (int n = rcg.start(sq); n != rcg.DONE; n = rcg.next()) {
-            if (status_board[n] == Status::UNKNOWN) {
-                continue;
-            }
+            // if (status_board[n] == Status::UNKNOWN) {
+            //     continue;
+            // }
 
             for (int i = 0; i < solution_graph[n].size(); ++i) {
                 if (solution_graph[n][i] == index) {
@@ -604,19 +608,14 @@ void msolver::unsolve_square(set<int>& indexes) {
     }
 
     cout << "\nreset neighbors: ";
-
     for (int n : neighbors_needing_reset) {
-        // unsolved.erase(n);
         status_board[n] = Status::UNKNOWN;
         cout << disp(n) << " ";
-        // solution_graph[n].clear();
-        // uncover(n);
     }
     cout << endl;
 
     for (int n : neighbors_needing_reset) {
         unsolved.erase(n);
-        status_board[n] = Status::UNKNOWN;
         solution_graph[n].clear();
         uncover(n);
     }
@@ -671,7 +670,7 @@ void msolver::change_one_square() {
                 }
             }
         }
-        else if (status_board[i] == Status::UNKNOWN) {
+        if (status_board[i] == Status::UNKNOWN) {
             for (int n = n_gen.start(i); n != n_gen.DONE; n = n_gen.next()) {
                 if (status_board[n] != Status::UNKNOWN && board[n] != MINE) {
                     unknown_border.insert(i);
